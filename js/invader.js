@@ -32,15 +32,23 @@ phina.define('MainScene', {
         this.player = Player(
             this.gridX.center(), this.gridY.span(37)).addChildTo(this);
 
+        // 複数の敵を登録する対象
         this.enemyGroup = EnemyGroup().addChildTo(this);
-        // 以下の敵の追加はダメパターンです。真似しないで
-        const enemy1 = Enemy(this.gridX.span(5), this.gridY.span(3), ENEMY_ASSETS[0]).addChildTo(this.enemyGroup);
-        const enemy2 = Enemy(this.gridX.span(7), this.gridY.span(7), ENEMY_ASSETS[1]).addChildTo(this.enemyGroup);
-        const enemy3 = Enemy(this.gridX.span(9), this.gridY.span(11), ENEMY_ASSETS[2]).addChildTo(this.enemyGroup);
-        const enemy4 = Enemy(this.gridX.span(11), this.gridY.span(15), ENEMY_ASSETS[3]).addChildTo(this.enemyGroup);
-        const enemy5 = Enemy(this.gridX.span(13), this.gridY.span(19), ENEMY_ASSETS[4]).addChildTo(this.enemyGroup);
+
+        // 敵が発射したミサイルを登録する対象
+        this.missileGroup = DisplayElement().addChildTo(this);
+
     },
     update: function (app) {
+        // ミサイルと弾の当たり判定
+        if (this.player.bullet != null) {
+            this.missileGroup.children.some(missile => {
+                if (missile.hitTestElement(this.player.bullet)) {
+                    missile.flare('hit');
+                    this.player.bullet.flare('hit');
+                }
+            })
+        }
         // 弾と敵の当たり判定
         if (this.player.bullet != null) {
             this.enemyGroup.children.some(enemy => {
@@ -54,6 +62,13 @@ phina.define('MainScene', {
                 return false;
             })
         }
+        // ミサイルとプレイヤーの当たり判定
+        this.missileGroup.children.some(missile => {
+            if (missile.hitTestElement(this.player)) {
+                missile.flare('hit');
+                this.player.flare('hit');
+            }
+        })
     }
 });
 
@@ -93,7 +108,12 @@ phina.define('Player', {
         if (this.bullet != null && this.bullet.isInvalid) {
             this.bullet = null;
         }
+    },
+
+    onhit: function () {
+        this.remove();
     }
+
 });
 
 phina.define('Bullet', {
@@ -138,6 +158,47 @@ phina.define('Enemy', {
     onhit: function () {
         this.remove();
     },
+});
+
+phina.define('Missile', {
+    superClass: 'PathShape',
+
+    init: function (x, y) {
+        this.superInit({
+            // ミサイルの見た目(相対パスで指定)
+            paths: [
+                {x: 0, y: 0},
+                {x: 3, y: 2},
+                {x: -3, y: 4},
+                {x: 3, y: 6},
+                {x: -3, y: 8},
+                {x: 3, y: 10},
+                {x: -3, y: 12},
+                {x: 3, y: 14},
+                {x: 0, y: 16},
+            ],
+            fill: null,
+            // ミサイルの色
+            stroke: 'orangered',
+            lineJoin: 'miter',
+            // ミサイルの線の太さ
+            strokeWidth: 1,
+        });
+        this.x = x;
+        this.y = y;
+        // ミサイルの移動速度
+        this.SPEED = 4;
+    },
+    onhit: function () {
+        this.remove();
+    },
+
+    update: function () {
+        this.y += this.SPEED;
+        if (this.top > SCREEN_HEIGHT) {
+            this.flare('hit');
+        }
+    }
 });
 
 phina.define('EnemyGroup', {
